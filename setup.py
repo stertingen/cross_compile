@@ -53,6 +53,7 @@ setup(
     install_requires=[
         'docker>=2,<3',
         'setuptools',
+        'tqdm',
     ],
     zip_safe=True,
     entry_points={

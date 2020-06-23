@@ -17,6 +17,7 @@ from typing import Dict
 from typing import Optional
 
 import docker
+from tqdm import tqdm
 
 
 logging.basicConfig(level=logging.INFO)
@@ -76,6 +77,8 @@ class DockerClient:
         self._process_build_log(log_generator)
 
     def _process_build_log(self, log_generator) -> None:
+        progress_bar = None
+
         for chunk in log_generator:
             # There are two outputs we want to capture, stream and error.
             # We also process line breaks.
@@ -86,8 +89,20 @@ class DockerClient:
                 raise docker.errors.BuildError(error_line)
             line = chunk.get('stream', '')
             line = line.rstrip()
-            if line:
-                logger.info(line)
+            if not line:
+                continue
+            if line.startswith('Step '):
+                # e.g. "Step X/Y"
+                progress = line.split()[1]
+                current, total = progress.split('/')
+                if not progress_bar:
+                    progress_bar = tqdm(total=total)
+                progress_bar.update(current)
+                progress_bar.set_description(line)
+                logger.debug(line)
+
+        if progress_bar:
+            progress_bar.close()
 
     def run_container(
         self,
