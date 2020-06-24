@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import io
 import logging
 from pathlib import Path
+import tarfile
 from typing import Dict
 from typing import Optional
 
@@ -77,8 +79,6 @@ class DockerClient:
         self._process_build_log(log_generator)
 
     def _process_build_log(self, log_generator) -> None:
-        progress_bar = None
-
         for chunk in log_generator:
             # There are two outputs we want to capture, stream and error.
             # We also process line breaks.
@@ -91,21 +91,13 @@ class DockerClient:
             line = line.rstrip()
             if not line:
                 continue
-            if line.startswith('Step '):
-                # e.g. "Step X/Y"
-                progress = line.split()[1]
-                current, total = progress.split('/')
-                current = int(current)
-                total = int(total)
-                logger.info(line)
-                if not progress_bar:
-                    progress_bar = tqdm(total=total)
-                    progress_bar.set_description("Docker Build Step")
-                progress_bar.update(current-1)
-                # logger.debug(line)
-
-        if progress_bar:
-            progress_bar.close()
+            # if line.startswith('Step '):
+            #     # e.g. "Step X/Y"
+            #     progress = line.split()[1]
+            #     current, total = progress.split('/')
+            #     current = int(current)
+            #     total = int(total)
+            logger.info(line)
 
     def run_container(
         self,
@@ -158,6 +150,10 @@ class DockerClient:
             raise docker.errors.ContainerError(
                 image_name, exit_code, '', image_name, 'See above ^')
 
-    def export_filesystem(self, tag):
-        container = self._client.containers.run(tag, detach=True)
-        archive = container.export()
+    def export_image_filesystem(self, image_tag: str):
+        container = self._client.containers.run(image=image_tag, detach=True)
+        export_response = container.export()
+        tar_bytes = export_response.read()
+        tar_file = io.BytesIO(tar_bytes)
+        tar = tarfile.open(fileobj=tar_file)
+        return tar

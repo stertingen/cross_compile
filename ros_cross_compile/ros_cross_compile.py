@@ -24,6 +24,7 @@ from typing import List
 from typing import Optional
 
 from ros_cross_compile.builders import run_emulated_docker_build
+from ros_cross_compile.builders import run_cross_compile_docker_build
 from ros_cross_compile.dependencies import assert_install_rosdep_script_exists
 from ros_cross_compile.dependencies import gather_rosdeps
 from ros_cross_compile.docker_client import DEFAULT_COLCON_DEFAULTS_FILE
@@ -33,7 +34,7 @@ from ros_cross_compile.platform import SUPPORTED_ARCHITECTURES
 from ros_cross_compile.platform import SUPPORTED_ROS2_DISTROS
 from ros_cross_compile.platform import SUPPORTED_ROS_DISTROS
 from ros_cross_compile.runtime import create_runtime_image
-from ros_cross_compile.sysroot_creator import create_workspace_sysroot_image
+from ros_cross_compile.sysroot_creator import create_workspace_sysroot
 from ros_cross_compile.sysroot_creator import prepare_docker_build_environment
 
 logging.basicConfig(level=logging.INFO)
@@ -116,12 +117,10 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         help='Relative path within the workspace to a file that provides colcon arguments. '
              'See "Package Selection and Build Customization" in README.md for more details.')
     parser.add_argument(
-        '--skip-rosdep-collection',
-        action='store_true',
-        required=False,
-        help='Skip querying rosdep for dependencies. This is intended to save time when running '
-             'repeatedly during development, but has undefined behavior if the dependencies of '
-             'the workspace have changed since the last time they were collected.')
+        '--skip-steps',
+        nargs='+',
+        default=[],
+    )
     parser.add_argument(
         '--skip-rosdep-keys',
         default=[],
@@ -133,6 +132,15 @@ def parse_args(args: List[str]) -> argparse.Namespace:
              'runtime dependencies and the created "install" directory for the workspace.')
 
     return parser.parse_args(args)
+
+
+class step:
+    def __init__(self, name, fn):
+        self.fn = fn
+        self.name = name
+
+    def __call__(self):
+        self.fn()
 
 
 def cross_compile_pipeline(
@@ -161,7 +169,7 @@ def cross_compile_pipeline(
         default_docker_dir=sysroot_build_context,
         colcon_defaults_file=args.colcon_defaults)
 
-    if not args.skip_rosdep_collection:
+    if 'rosdep' not in args.skip_steps:
         gather_rosdeps(
             docker_client=docker_client,
             platform=platform,
@@ -169,12 +177,25 @@ def cross_compile_pipeline(
             skip_rosdep_keys=skip_rosdep_keys,
             custom_script=custom_rosdep_script,
             custom_data_dir=custom_data_dir)
-    assert_install_rosdep_script_exists(ros_workspace_dir, platform)
-    create_workspace_sysroot_image(docker_client, platform)
-    run_emulated_docker_build(docker_client, platform, ros_workspace_dir)
-    if args.create_runtime_image is not None:
+    else:
+        logger.info("Skipping step 'rosdep'")
+
+    if 'sysroot' not in args.skip_steps:
+        assert_install_rosdep_script_exists(ros_workspace_dir, platform)
+        create_workspace_sysroot(docker_client, platform, ros_workspace_dir)
+    else:
+        logger.info("Skipping step 'sysroot'")
+
+    if 'build' not in args.skip_steps:
+        run_cross_compile_docker_build(docker_client, platform, ros_workspace_dir)
+    else:
+        logger.info("Skipping step 'build'")
+
+    if 'runtime' not in args.skip_steps and args.create_runtime_image is not None:
         create_runtime_image(
             docker_client, platform, ros_workspace_dir, args.create_runtime_image)
+    else:
+        logger.info("Skipping step 'runtime'")
 
 
 def main():

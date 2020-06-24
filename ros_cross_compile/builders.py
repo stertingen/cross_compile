@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def run_emulated_docker_build(
     docker_client: DockerClient,
     platform: Platform,
-    workspace_path: Path
+    workspace_path: Path,
 ) -> None:
     """
     Spin up a sysroot docker container and run an emulated build inside.
@@ -44,4 +44,29 @@ def run_emulated_docker_build(
         volumes={
             workspace_path: '/ros_ws',
         },
+    )
+
+
+def run_cross_compile_docker_build(
+    docker_client: DockerClient,
+    platform: Platform,
+    workspace_path: Path,
+) -> None:
+    docker_client.build_image(
+        dockerfile_name='build.Dockerfile',
+        tag=platform.build_image_tag
+    )
+    sysroot_path = workspace_path / 'cc_internals' / 'sysroot'
+
+    docker_client.run_container(
+        image_name=platform.build_image_tag,
+        environment={
+            'OWNER_USER': str(os.getuid()),
+            'ROS_DISTRO': platform.ros_distro,
+            'TARGET_ARCH': platform.arch,
+        },
+        volumes={
+            workspace_path: '/ros_ws',
+            sysroot_path: '/cc_sysroot',
+        }
     )

@@ -75,9 +75,11 @@ def prepare_docker_build_environment(
     package_dir = Path(__file__).parent
     docker_build_dir = ros_workspace / build_internals_dir(platform)
     docker_build_dir.mkdir(parents=True, exist_ok=True)
+    (docker_build_dir.parent / 'COLCON_IGNORE').touch()
 
     _copytree(package_dir / 'docker', docker_build_dir)
     _copytree(package_dir / 'mixins', docker_build_dir / 'mixins')
+    _copytree(package_dir / 'toolchains', docker_build_dir / 'toolchains')
 
     custom_data_dest = docker_build_dir / 'user-custom-data'
     if custom_data_dir:
@@ -95,9 +97,10 @@ def prepare_docker_build_environment(
     return docker_build_dir
 
 
-def create_workspace_sysroot_image(
+def create_workspace_sysroot(
     docker_client: DockerClient,
     platform: Platform,
+    ros_workspace: Path,
 ) -> None:
     """
     Create the target platform sysroot image.
@@ -107,6 +110,7 @@ def create_workspace_sysroot_image(
     :param build_context Directory containing all assets needed by sysroot.Dockerfile
     """
     image_tag = platform.sysroot_image_tag
+    sysroot_destination = (ros_workspace / build_internals_dir(platform)).parent / 'sysroot'
 
     logger.info('Building sysroot image: %s', image_tag)
     docker_client.build_image(
@@ -119,4 +123,12 @@ def create_workspace_sysroot_image(
         }
     )
     logger.info('Successfully created sysroot docker image: %s', image_tag)
-    docker_client.export_filesystem(image_tag)
+    logger.info('Exporting sysroot')
+    fs = docker_client.export_image_filesystem(image_tag)
+    logger.info('Extracting sysroot to destination')
+    try:
+        shutil.rmtree(str(sysroot_destination))
+    except FileNotFoundError:
+        pass
+    fs.extractall(sysroot_destination)
+    fs.close()

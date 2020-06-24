@@ -129,7 +129,11 @@ class Platform:
     @property
     def sysroot_image_tag(self) -> str:
         """Generate docker image name and tag."""
-        return getpass.getuser() + '/' + str(self) + ':latest'
+        return 'ros_cross_compile/{}:sysroot'.format(self)
+
+    @property
+    def build_image_tag(self) -> str:
+        return 'ros_cross_compile/{}:build'.format(self)
 
     @property
     def target_base_image(self) -> str:
