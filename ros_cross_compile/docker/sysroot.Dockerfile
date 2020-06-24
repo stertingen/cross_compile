@@ -39,6 +39,10 @@ RUN if [[ "${ROS_VERSION}" == "ros2" ]]; then \
     && rm -rf /var/lib/apt/lists/* \
   ; fi
 
+RUN apt-get update && apt-get install --no-install-recommends -y \
+      libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Run arbitrary user setup (copy data and run script)
 COPY user-custom-data/ custom-data/
 COPY user-custom-setup .

@@ -67,6 +67,5 @@ def run_cross_compile_docker_build(
         },
         volumes={
             workspace_path: '/ros_ws',
-            sysroot_path: '/cc_sysroot',
         }
     )

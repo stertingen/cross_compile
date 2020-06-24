@@ -128,6 +128,7 @@ class DockerClient:
         # Note that the `run` kwarg `stream` is not available
         # in the version of dockerpy that we are using, so we must detach to live-stream logs
         # Do not `remove` so that the container can be queried for its exit code after finishing
+        logger.info("Running docker container of image {}".format(image_name))
         container = self._client.containers.run(
             image=image_name,
             name=container_name,
