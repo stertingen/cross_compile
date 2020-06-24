@@ -115,6 +115,8 @@ def create_workspace_sysroot_image(
         buildargs={
             'BASE_IMAGE': platform.target_base_image,
             'ROS_VERSION': platform.ros_version,
+            'DEPENDENCY_SCRIPT': 'install_rosdeps.sh',
         }
     )
     logger.info('Successfully created sysroot docker image: %s', image_tag)
+    docker_client.export_filesystem(image_tag)

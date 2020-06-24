@@ -95,11 +95,14 @@ class DockerClient:
                 # e.g. "Step X/Y"
                 progress = line.split()[1]
                 current, total = progress.split('/')
+                current = int(current)
+                total = int(total)
+                logger.info(line)
                 if not progress_bar:
                     progress_bar = tqdm(total=total)
-                progress_bar.update(current)
-                progress_bar.set_description(line)
-                logger.debug(line)
+                    progress_bar.set_description("Docker Build Step")
+                progress_bar.update(current-1)
+                # logger.debug(line)
 
         if progress_bar:
             progress_bar.close()
@@ -154,3 +157,7 @@ class DockerClient:
         if exit_code:
             raise docker.errors.ContainerError(
                 image_name, exit_code, '', image_name, 'See above ^')
+
+    def export_filesystem(self, tag):
+        container = self._client.containers.run(tag, detach=True)
+        archive = container.export()

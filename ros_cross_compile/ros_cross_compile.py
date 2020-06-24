@@ -60,9 +60,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         help='Target architecture')
     parser.add_argument(
         '-d', '--rosdistro',
-        required=False,
         type=str,
-        default='dashing',
         choices=SUPPORTED_ROS_DISTROS + SUPPORTED_ROS2_DISTROS,
         help='Target ROS distribution')
     parser.add_argument(
