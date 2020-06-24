@@ -93,6 +93,7 @@ class Platform:
         else:
             self._os_distro = ROSDISTRO_OS_MAP[self.ros_distro][self.os_name]
             native_base = '{}:{}'.format(self.os_name, self.os_distro)
+            self._native_base = native_base
             if docker_org:
                 self._docker_target_base = '{}/{}'.format(docker_org, native_base)
             else:
@@ -134,6 +135,10 @@ class Platform:
     @property
     def build_image_tag(self) -> str:
         return 'ros_cross_compile/{}:build'.format(self)
+
+    @property
+    def build_base_image(self) -> str:
+        return self._native_base
 
     @property
     def target_base_image(self) -> str:

@@ -7,6 +7,12 @@ export ROS_WS_BUILD_PATH=/ros_ws/build_${TARGET_ARCH}
 
 rosdir=${SYSROOT}/opt/ros/${ROS_DISTRO}
 
+# Make sure to always own the outputs, even if the build fails
+trap 'cleanup' EXIT
+cleanup(){
+  chown -R "${OWNER_USER}" .
+}
+
 # It's possible that the workspace does not require ROS binary dependencies
 # so this could not have been created. Instead of checking, lazily touch it
 mkdir -p ${rosdir}
@@ -20,8 +26,4 @@ set -ux
 colcon build \
   --build-base ${ROS_WS_BUILD_PATH} \
   --install-base ${ROS_WS_INSTALL_PATH} \
-  # --event-handlers console_direct+ \
-  --cmake-force-configure \
   --cmake-args -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DCMAKE_TOOLCHAIN_FILE=/toolchains/${TARGET_ARCH}-gnu.cmake --no-warn-unused-cli
-
-chown -R "${OWNER_USER}" .

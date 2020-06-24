@@ -8,11 +8,11 @@ FROM ${BASE_IMAGE}
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Grab the qemu binaries, if any, that were placed in the build context for us
 COPY bin/* /usr/bin/
 
 # # Add the ros apt repo
 RUN apt-get update && apt-get install --no-install-recommends -y \
-#         dirmngr \
         gnupg2 \
         lsb-release \
     && rm -rf /var/lib/apt/lists/*
@@ -27,6 +27,8 @@ RUN echo "deb http://packages.ros.org/ros2/ubuntu `lsb_release -cs` main" \
 # ROS dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
       python3-pip \
+      libssl-dev \
+      symlinks \
     && rm -rf /var/lib/apt/lists/*
 
 ARG ROS_VERSION
@@ -38,10 +40,6 @@ RUN if [[ "${ROS_VERSION}" == "ros2" ]]; then \
         libtinyxml2-dev \
     && rm -rf /var/lib/apt/lists/* \
   ; fi
-
-RUN apt-get update && apt-get install --no-install-recommends -y \
-      libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 # Run arbitrary user setup (copy data and run script)
 COPY user-custom-data/ custom-data/
@@ -57,3 +55,6 @@ RUN chmod +x ${DEPENDENCY_SCRIPT}
 RUN apt-get update && \
     ./${DEPENDENCY_SCRIPT} && \
     rm -rf /var/lib/apt/lists/*
+
+# Make all absolute symlinks in the filesystem relative, so that we can use it for cross-compilation
+RUN symlinks -rc /

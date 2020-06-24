@@ -54,9 +54,8 @@ def run_cross_compile_docker_build(
 ) -> None:
     docker_client.build_image(
         dockerfile_name='build.Dockerfile',
-        tag=platform.build_image_tag
+        tag=platform.build_image_tag,
     )
-    sysroot_path = workspace_path / 'cc_internals' / 'sysroot'
 
     docker_client.run_container(
         image_name=platform.build_image_tag,
