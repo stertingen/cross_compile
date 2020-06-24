@@ -13,6 +13,7 @@ colcon build \
   --build-base ${ROS_WS_BUILD_PATH} \
   --install-base ${ROS_WS_INSTALL_PATH} \
   --event-handlers console_direct+ \
-  --cmake-args -DCMAKE_TOOLCHAIN_FILE=/toolchains/${TARGET_ARCH}-gnu.cmake --no-warn-unused-cli
+  --cmake-force-configure \
+  --cmake-args -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DCMAKE_TOOLCHAIN_FILE=/toolchains/${TARGET_ARCH}-gnu.cmake --no-warn-unused-cli
 
 chown -R "${OWNER_USER}" .
