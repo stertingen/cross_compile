@@ -18,12 +18,18 @@ cleanup(){
 mkdir -p ${rosdir}
 touch ${rosdir}/setup.bash
 
+export TRIPLE=aarch64-linux-gnu
+# Fast-RTPS exports
+ln -s ${SYSROOT}/usr/lib/${TRIPLE}/libtinyxml2.so /usr/lib/${TRIPLE}/libtinyxml2.so
+
 set +ux
 # shellcheck source=/dev/null
 source ${rosdir}/setup.bash
 set -ux
-
+export MAKEFLAGS="-j1"
 colcon build \
   --build-base ${ROS_WS_BUILD_PATH} \
   --install-base ${ROS_WS_INSTALL_PATH} \
+  --event-handlers console_direct+ \
+  --cmake-force-configure \
   --cmake-args -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DCMAKE_TOOLCHAIN_FILE=/toolchains/${TARGET_ARCH}-gnu.cmake --no-warn-unused-cli
