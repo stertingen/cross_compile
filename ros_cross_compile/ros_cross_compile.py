@@ -17,6 +17,7 @@
 """Executable for cross-compiling ROS and ROS 2 packages."""
 
 import argparse
+import contextlib
 import logging
 from pathlib import Path
 import sys
@@ -143,6 +144,22 @@ class step:
         self.fn()
 
 
+class Timings:
+    def __init__(self):
+        self.times = []
+
+    @contextlib.contextmanager
+    def time(self, name):
+        import time
+        start = time.time()
+        yield
+        duration = time.time() - start
+        self.times.append((name, duration))
+
+    def __str__(self):
+        return str(self.times)
+
+
 def cross_compile_pipeline(
     args: argparse.Namespace,
 ):
@@ -169,33 +186,45 @@ def cross_compile_pipeline(
         default_docker_dir=sysroot_build_context,
         colcon_defaults_file=args.colcon_defaults)
 
-    if 'rosdep' not in args.skip_steps:
-        gather_rosdeps(
-            docker_client=docker_client,
-            platform=platform,
-            workspace=ros_workspace_dir,
-            skip_rosdep_keys=skip_rosdep_keys,
-            custom_script=custom_rosdep_script,
-            custom_data_dir=custom_data_dir)
-    else:
-        logger.info("Skipping step 'rosdep'")
+    timings = Timings()
+    try:
+        step = 'rosdep'
+        if step not in args.skip_steps:
+            with timings.time(step):
+                gather_rosdeps(
+                    docker_client=docker_client,
+                    platform=platform,
+                    workspace=ros_workspace_dir,
+                    skip_rosdep_keys=skip_rosdep_keys,
+                    custom_script=custom_rosdep_script,
+                    custom_data_dir=custom_data_dir)
+        else:
+            logger.info("Skipping step 'rosdep'")
 
-    if 'sysroot' not in args.skip_steps:
-        assert_install_rosdep_script_exists(ros_workspace_dir, platform)
-        create_workspace_sysroot(docker_client, platform, ros_workspace_dir)
-    else:
-        logger.info("Skipping step 'sysroot'")
+        step = 'sysroot'
+        if step not in args.skip_steps:
+            with timings.time(step):
+                assert_install_rosdep_script_exists(ros_workspace_dir, platform)
+                create_workspace_sysroot(docker_client, platform, ros_workspace_dir)
+        else:
+            logger.info("Skipping step 'sysroot'")
 
-    if 'build' not in args.skip_steps:
-        run_cross_compile_docker_build(docker_client, platform, ros_workspace_dir)
-    else:
-        logger.info("Skipping step 'build'")
+        step = 'build'
+        if step not in args.skip_steps:
+            with timings.time(step):
+                run_cross_compile_docker_build(docker_client, platform, ros_workspace_dir)
+        else:
+            logger.info("Skipping step 'build'")
 
-    if 'runtime' not in args.skip_steps and args.create_runtime_image is not None:
-        create_runtime_image(
-            docker_client, platform, ros_workspace_dir, args.create_runtime_image)
-    else:
-        logger.info("Skipping step 'runtime'")
+        step = 'runtime'
+        if step not in args.skip_steps and args.create_runtime_image is not None:
+            with timings.time(step):
+                create_runtime_image(
+                    docker_client, platform, ros_workspace_dir, args.create_runtime_image)
+        else:
+            logger.info("Skipping step 'runtime'")
+    finally:
+        print(timings)
 
 
 def main():
